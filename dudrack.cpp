@@ -163,24 +163,23 @@ void set_signal_handler() {
 }
 
 int main(int argc, char** argv) {
-    int output_device, input_device, i;
 
     if (argc != 2) {
         exit_with_error("Usage: dudrack <INPUT_DEVICE_EVENT>");
     }
 
-    input_device = open(argv[1], O_RDONLY);
-    if (input_device < 0) {
-        exit_with_error("error: cannot open input device");
+    int input_device;
+    while ((input_device = open(argv[1], O_RDONLY)) < 0) {
+        usleep(1);
     }
 
-    output_device = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-    if (output_device < 0) {
-        exit_with_error("error: cannot open /dev/uinput");
+    int output_device;
+    while ((output_device = open("/dev/uinput", O_WRONLY | O_NONBLOCK)) < 0) {
+        usleep(1);
     }
 
     ioctl_set(output_device, UI_SET_EVBIT, EV_KEY);
-    for (i = 0; i < KEY_CNT; ++i){
+    for (int i = 0; i < KEY_CNT; ++i){
         ioctl_set(output_device, UI_SET_KEYBIT, i);
     }
 
@@ -189,27 +188,39 @@ int main(int argc, char** argv) {
     struct input_event event;
     int size_read;
 
-    ioctl(input_device, EVIOCGRAB, 1);
-
     set_signal_handler();
 
     initNeutralTable();
     initHenkanTable();
 
-    for (i = 0; i < KEY_CNT; ++i) {
+    for (int i = 0; i < KEY_CNT; ++i) {
         send_event(output_device, EV_KEY, i, 0);
     }
 
-    int is_henkan = 0;
+    ioctl(input_device, EVIOCGRAB, 1);
+
+    bool is_henkan = false, use_dudrack = true;
     while (!do_terminate && (size_read = read(input_device, &event, sizeof(struct input_event)))) {
         if (size_read < 0) {
             continue;
         }
 
         if (event.type == EV_KEY) {
-            if (event.code == KEY_HENKAN) {
-                is_henkan = event.value;
-            } else {
+            if (event.code == KEY_PAGEUP) {
+                use_dudrack = true;
+                continue;
+            } else if (event.code == KEY_PAGEDOWN) {
+                use_dudrack = false;
+                continue;
+            }
+
+
+            if (use_dudrack) {
+                if (event.code == KEY_HENKAN) {
+                    is_henkan = event.value;
+                    continue;
+                }
+
                 if (event.value == 1) {
                     int key_code = is_henkan ? henkanTable[event.code] : neutralTable[event.code];
                     send_event(output_device, EV_KEY, key_code, 1);
@@ -219,6 +230,11 @@ int main(int argc, char** argv) {
                     send_event(output_device, EV_KEY, neutralTable[event.code], 0);
                     send_event(output_device, EV_KEY, henkanTable[event.code], 0);
                 }
+            } else {
+                if (event.code == KEY_HENKAN) {
+                    is_henkan = event.value;
+                }
+                send_event(output_device, EV_KEY, event.code, event.value);
             }
 
             send_event(output_device, EV_SYN, SYN_REPORT, 0);
