@@ -47,8 +47,8 @@ void initNeutralTable(){
     neutralTable[KEY_SLASH     ] = KEY_Z;
 
     neutralTable[KEY_CAPSLOCK] = KEY_LEFTCTRL;
-    neutralTable[KEY_MUHENKAN] = KEY_LEFTSHIFT;
-    neutralTable[KEY_HANJA   ] = KEY_LEFTSHIFT;
+    neutralTable[KEY_MUHENKAN] = KEY_LEFTMETA;
+    neutralTable[KEY_HANJA   ] = KEY_LEFTMETA;
 }
 
 int henkanTable[KEY_CNT];
@@ -92,8 +92,8 @@ void initHenkanTable(){
     henkanTable[KEY_SLASH     ] = KEY_EQUAL;
 
     henkanTable[KEY_CAPSLOCK] = KEY_LEFTCTRL;
-    henkanTable[KEY_MUHENKAN] = KEY_LEFTSHIFT;
-    henkanTable[KEY_HANJA   ] = KEY_LEFTSHIFT;
+    henkanTable[KEY_MUHENKAN] = KEY_LEFTMETA;
+    henkanTable[KEY_HANJA   ] = KEY_LEFTMETA;
 }
 
 static int do_terminate = 0;
@@ -165,7 +165,6 @@ void set_signal_handler() {
 }
 
 int main(int argc, char** argv) {
-
     if (argc != 2) {
         exit_with_error("Usage: dudrack <INPUT_DEVICE_EVENT>");
     }
@@ -202,6 +201,7 @@ int main(int argc, char** argv) {
     ioctl(input_device, EVIOCGRAB, 1);
 
     bool is_henkan = false, use_dudrack = true;
+    int space_key_state = 0;
     while (!do_terminate && (size_read = read(input_device, &event, sizeof(struct input_event)))) {
         if (size_read < 0) {
             continue;
@@ -223,7 +223,40 @@ int main(int argc, char** argv) {
                     continue;
                 }
 
-                if (event.value == 1) {
+                // SandS
+                if (event.code == KEY_SPACE) {
+                    switch (space_key_state) {
+                        case 0:
+                            if (event.value > 0) {
+                                space_key_state = 1;
+                            }
+                            continue;
+
+                        case 1:
+                            if (event.value == 0) {
+                                send_event(output_device, EV_KEY, KEY_SPACE, 1);
+                                send_event(output_device, EV_SYN, SYN_REPORT, 0);
+                                send_event(output_device, EV_KEY, KEY_SPACE, 0);
+                                send_event(output_device, EV_SYN, SYN_REPORT, 0);
+                                space_key_state = 0;
+                            }
+                            continue;
+
+                        case 2:
+                            if (event.value == 0) {
+                                send_event(output_device, EV_KEY, KEY_LEFTSHIFT, 0);
+                                space_key_state = 0;
+                            }
+                            continue;
+                    }
+                }
+
+                if (event.code != KEY_SPACE && event.value > 0 && space_key_state == 1) {
+                    send_event(output_device, EV_KEY, KEY_LEFTSHIFT, 1);
+                    space_key_state = 2;
+                }
+
+                if (event.value > 0) {
                     int key_code = is_henkan ? henkanTable[event.code] : neutralTable[event.code];
                     send_event(output_device, EV_KEY, key_code, 1);
                 }
