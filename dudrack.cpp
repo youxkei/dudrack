@@ -48,6 +48,8 @@ void initNeutralTable(){
 
     neutralTable[KEY_CAPSLOCK] = KEY_LEFTCTRL;
     neutralTable[KEY_MUHENKAN] = KEY_LEFTSHIFT;
+    neutralTable[KEY_HANJA   ] = KEY_LEFTSHIFT;
+    neutralTable[KEY_LEFTMETA] = KEY_LEFTALT;
 }
 
 int henkanTable[KEY_CNT];
@@ -92,6 +94,8 @@ void initHenkanTable(){
 
     henkanTable[KEY_CAPSLOCK] = KEY_LEFTCTRL;
     henkanTable[KEY_MUHENKAN] = KEY_LEFTSHIFT;
+    henkanTable[KEY_HANJA   ] = KEY_LEFTSHIFT;
+    henkanTable[KEY_LEFTMETA] = KEY_LEFTALT;
 }
 
 static int do_terminate = 0;
@@ -216,7 +220,7 @@ int main(int argc, char** argv) {
 
 
             if (use_dudrack) {
-                if (event.code == KEY_HENKAN) {
+                if (event.code == KEY_HENKAN || event.code == KEY_HANGEUL) {
                     is_henkan = event.value;
                     continue;
                 }
@@ -231,7 +235,7 @@ int main(int argc, char** argv) {
                     send_event(output_device, EV_KEY, henkanTable[event.code], 0);
                 }
             } else {
-                if (event.code == KEY_HENKAN) {
+                if (event.code == KEY_HENKAN || event.code == KEY_HANGEUL) {
                     is_henkan = event.value;
                 }
                 send_event(output_device, EV_KEY, event.code, event.value);
