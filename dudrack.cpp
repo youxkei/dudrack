@@ -50,8 +50,7 @@ void initNeutralTable(){
     neutralTable[KEY_SPACE           ] = KEY_LEFTSHIFT;
     neutralTable[KEY_MUHENKAN        ] = KEY_LEFTSHIFT;
     neutralTable[KEY_HANJA           ] = KEY_LEFTSHIFT;
-    neutralTable[KEY_LEFTALT         ] = KEY_LEFTMETA;
-    neutralTable[KEY_KATAKANAHIRAGANA] = KEY_RIGHTMETA;
+    neutralTable[KEY_KATAKANAHIRAGANA] = KEY_RIGHTALT;
 }
 
 int henkanTable[KEY_CNT];
@@ -98,8 +97,7 @@ void initHenkanTable(){
     henkanTable[KEY_SPACE           ] = KEY_LEFTSHIFT;
     henkanTable[KEY_MUHENKAN        ] = KEY_LEFTSHIFT;
     henkanTable[KEY_HANJA           ] = KEY_LEFTSHIFT;
-    henkanTable[KEY_LEFTALT         ] = KEY_LEFTMETA;
-    henkanTable[KEY_KATAKANAHIRAGANA] = KEY_RIGHTMETA;
+    henkanTable[KEY_KATAKANAHIRAGANA] = KEY_RIGHTALT;
 }
 
 static int do_terminate = 0;
