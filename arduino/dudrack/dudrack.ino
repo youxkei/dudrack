@@ -3,6 +3,8 @@
 #include <hidboot.h>
 #include <hiduniversal.h>
 #include <usbhub.h>
+#include <Keyboard.h>
+#include <Mouse.h>
 
 #define LEN 8
 
@@ -77,11 +79,13 @@
 #define KEY_HOME 0x4A
 #define KEY_END 0x4D
 
-#define OUTPUT_TO_SERIAL 0
+#define KEY_COUNT 0x100
 
-uint8_t neutralTable[0x100];
+#define OUTPUT_TO_SERIAL 1
+
+uint8_t neutralTable[KEY_COUNT];
 void initNeutralTable(){
-    for (int i = 0; i < 0x100; ++i){
+    for (int i = 0; i < KEY_COUNT; ++i){
         neutralTable[i] = i;
     }
 
@@ -118,9 +122,9 @@ void initNeutralTable(){
     neutralTable[KEY_SLASH    ] = KEY_Z;
 }
 
-uint8_t henkanTable[0x100];
+uint8_t henkanTable[KEY_COUNT];
 void initHenkanTable(){
-    for (int i = 0; i < 0x100; ++i){
+    for (int i = 0; i < KEY_COUNT; ++i){
         henkanTable[i] = i;
     }
 
@@ -186,11 +190,11 @@ void changeMuhenkanToShift(uint8_t *buf) {
 
 bool henkanPrev = false;
 
-void processCustomModifier(uint8_t *buf) {
+void handleCustomModifier(uint8_t *buf) {
     bool henkan = remove(buf, KEY_HENKAN);
 
     // modifierが変化した時にはキーを出力しない
-    if (!henkanPrev   && henkan   || henkanPrev   && !henkan) {
+    if (!henkanPrev && henkan || henkanPrev && !henkan) {
         for (int i = 2; i < LEN; i++) {
             buf[i] = 0;
         }
@@ -207,10 +211,10 @@ void processCustomModifier(uint8_t *buf) {
     henkanPrev = henkan;
 }
 
-class Parser : public HIDReportParser
-{
-protected:
-    virtual void Parse(HID *hid, bool is_rpt_id, uint8_t len, uint8_t *buf) {
+
+class HIDKeyboardReportParser : public HIDReportParser {
+public:
+    virtual void Parse(USBHID *hid, bool is_rpt_id, uint8_t len, uint8_t *buf) {
 #if OUTPUT_TO_SERIAL
         Serial.print("SRC:  ");
         for (int i = 0; i < LEN; i++) {
@@ -222,7 +226,7 @@ protected:
 
         changeCapsLockToControl(buf);
         changeMuhenkanToShift(buf);
-        processCustomModifier(buf);
+        handleCustomModifier(buf);
 
 #if OUTPUT_TO_SERIAL
         Serial.print("DEST: ");
@@ -237,17 +241,33 @@ protected:
     }
 };
 
-USB     Usb;
-HIDBoot<HID_PROTOCOL_KEYBOARD>    HidKeyboard(&Usb);
 
-Parser parser;
+class HIDMouseReportParser : public MouseReportParser {
+protected:
+    virtual void OnMouseMove(MOUSEINFO *mouseInfo)        { Mouse.move((signed char)(mouseInfo->dX * 1.5), (signed char)(mouseInfo->dY * 1.5), 0); }
+    virtual void OnLeftButtonDown(MOUSEINFO *mouseInfo)   { Mouse.press(MOUSE_LEFT); }
+    virtual void OnLeftButtonUp(MOUSEINFO *mouseInfo)     { Mouse.release(MOUSE_LEFT); }
+    virtual void OnRightButtonDown(MOUSEINFO *mouseInfo)  { Mouse.press(MOUSE_RIGHT); }
+    virtual void OnRightButtonUp(MOUSEINFO *mouseInfo)    { Mouse.release(MOUSE_RIGHT); }
+    virtual void OnMiddleButtonDown(MOUSEINFO *mouseInfo) { Mouse.press(MOUSE_MIDDLE); }
+    virtual void OnMiddleButtonUp(MOUSEINFO *mouseInfo)   { Mouse.release(MOUSE_MIDDLE); }
+};
 
-void setup()
-{
+USB    Usb;
+USBHub Hub(&Usb);
+
+HIDBoot<USB_HID_PROTOCOL_KEYBOARD | USB_HID_PROTOCOL_MOUSE> HidComposite(&Usb);
+HIDBoot<USB_HID_PROTOCOL_KEYBOARD>                          HidKeyboard(&Usb);
+HIDBoot<USB_HID_PROTOCOL_MOUSE>                             HidMouse(&Usb);
+
+HIDKeyboardReportParser keyboardReportParser;
+HIDMouseReportParser mouseReportParser;
+
+void setup() {
     int usbStatus = Usb.Init();
 
 #if OUTPUT_TO_SERIAL
-    Serial.begin( 115200 );
+    Serial.begin(115200);
     while (!Serial);
     if (usbStatus == -1) {
         Serial.println("OSC did not start.");
@@ -257,12 +277,14 @@ void setup()
     initNeutralTable();
     initHenkanTable();
 
-    //delay( 200 );
-
-    HidKeyboard.SetReportParser(0, (HIDReportParser*)&parser);
+    HidComposite.SetReportParser(0, &keyboardReportParser);
+    HidComposite.SetReportParser(1, &mouseReportParser);
+    HidKeyboard.SetReportParser(0, &keyboardReportParser);
+    HidMouse.SetReportParser(0, &mouseReportParser);
+    Mouse.begin();
+    Keyboard.begin();
 }
 
-void loop()
-{
+void loop() {
     Usb.Task();
 }
