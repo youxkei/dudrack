@@ -50,9 +50,6 @@ void initNeutralTable(){
     neutralTable[KEY_SLASH     ] = KEY_Z;
 
     neutralTable[KEY_CAPSLOCK        ] = KEY_LEFTCTRL;
-    neutralTable[KEY_SPACE           ] = KEY_LEFTSHIFT;
-    neutralTable[KEY_MUHENKAN        ] = KEY_LEFTSHIFT;
-    neutralTable[KEY_HANJA           ] = KEY_LEFTSHIFT;
     neutralTable[KEY_KATAKANAHIRAGANA] = KEY_RIGHTALT;
 }
 
@@ -97,9 +94,6 @@ void initHenkanTable(){
     henkanTable[KEY_SLASH     ] = KEY_EQUAL;
 
     henkanTable[KEY_CAPSLOCK        ] = KEY_LEFTCTRL;
-    henkanTable[KEY_SPACE           ] = KEY_LEFTSHIFT;
-    henkanTable[KEY_MUHENKAN        ] = KEY_LEFTSHIFT;
-    henkanTable[KEY_HANJA           ] = KEY_LEFTSHIFT;
     henkanTable[KEY_KATAKANAHIRAGANA] = KEY_RIGHTALT;
 }
 
@@ -204,71 +198,97 @@ int main(int argc, char** argv) {
     while (!do_terminate) {
         int input_device;
         while ((input_device = open(argv[1], O_RDONLY)) < 0) {
+            if (do_terminate) {
+                goto BREAK_MAIN_LOOP;
+            }
+
             usleep(POLLING_INTERVAL);
         }
 
         ioctl(input_device, EVIOCGRAB, 1);
 
-        bool is_henkan = false, is_muhenkan = false, no_event_between_space_events = false;
-        while (!do_terminate && read(input_device, &event, sizeof(struct input_event)) == sizeof(struct input_event)) {
-            if (event.type == EV_KEY) {
-                if (event.code == KEY_PAGEUP) {
-                    use_dudrack = true;
-                    continue;
-                } else if (event.code == KEY_PAGEDOWN) {
-                    use_dudrack = false;
-                    continue;
-                }
+        bool is_henkan = false;
+        bool is_muhenkan = false;
+        bool no_event_between_space_events = false;
 
+        while (
+            read(input_device, &event, sizeof(struct input_event))
+            == sizeof(struct input_event)
+        ) {
+            if (do_terminate) {
+                goto BREAK_MAIN_LOOP;
+            }
 
-                if (use_dudrack) {
-                    if (event.code == KEY_HENKAN || event.code == KEY_HANGEUL) {
-                        is_henkan = event.value;
-                        continue;
-                    }
+            if (event.type != EV_KEY) {
+                continue;
+            }
 
-                    if (event.code == KEY_MUHENKAN || event.code == KEY_HANJA) {
-                        is_muhenkan = event.value;
-                    }
+            if (event.code == KEY_PAGEUP) {
+                use_dudrack = true;
+                continue;
+            } else if (event.code == KEY_PAGEDOWN) {
+                use_dudrack = false;
+                continue;
+            }
 
-                    if (event.value > 0) {
-                        int key_code = (is_henkan || is_muhenkan) ? henkanTable[event.code] : neutralTable[event.code];
-                        send_event(output_device, EV_KEY, key_code, event.value);
-                    } else {
-                        send_event(output_device, EV_KEY, neutralTable[event.code], 0);
-                        send_event(output_device, EV_KEY, henkanTable[event.code], 0);
-                    }
+            switch (event.code) {
+                case KEY_HENKAN:
+                case KEY_HANGEUL:
+                    is_henkan = event.value;
+                    break;
+
+                case KEY_MUHENKAN:
+                case KEY_HANJA:
+                    is_muhenkan = event.value;
+                    send_event(output_device, EV_KEY, KEY_LEFTSHIFT, event.value);
+                    break;
+
+                case KEY_SPACE:
+                    send_event(output_device, EV_KEY, KEY_LEFTSHIFT, event.value);
 
                     // SandS
-                    if (event.code == KEY_SPACE) {
-                        if (event.value == 1 && !no_event_between_space_events) {
-                            no_event_between_space_events = true;
-                        } else if (event.value == 0 && no_event_between_space_events) {
-                            send_event(output_device, EV_KEY, KEY_SPACE, 1);
-                            send_event(output_device, EV_KEY, KEY_SPACE, 0);
-                        }
-                    } else if (event.value > 0 && no_event_between_space_events) {
+                    if (event.value) {
+                        no_event_between_space_events = true;
+                    } else if (!event.value && no_event_between_space_events) {
+                        send_event(output_device, EV_KEY, KEY_SPACE, 1);
+                        send_event(output_device, EV_KEY, KEY_SPACE, 0);
+                    }
+                    break;
+
+                default:
+                    if (event.value > 0) {
                         no_event_between_space_events = false;
-                    }
-                } else {
-                    if (event.code == KEY_HENKAN || event.code == KEY_HANGEUL) {
-                        is_henkan = event.value;
+
+                        send_event(
+                            output_device,
+                            EV_KEY,
+                            use_dudrack
+                                ? ((is_henkan || is_muhenkan)
+                                    ? henkanTable[event.code]
+                                    : neutralTable[event.code])
+                                : event.code,
+                            event.value
+                        );
+                    } else {
+                        if (use_dudrack) {
+                            send_event(output_device, EV_KEY, neutralTable[event.code], 0);
+                            send_event(output_device, EV_KEY, henkanTable[event.code], 0);
+                        } else {
+                            send_event(output_device, EV_KEY, event.code, 0);
+                        }
                     }
 
-                    if (event.code == KEY_MUHENKAN || event.code == KEY_HANJA) {
-                        is_muhenkan = event.value;
-                    }
-
-                    send_event(output_device, EV_KEY, event.code, event.value);
-                }
-
-                send_event(output_device, EV_SYN, SYN_REPORT, 0);
+                    break;
             }
+
+            send_event(output_device, EV_SYN, SYN_REPORT, 0);
         }
 
         ioctl(input_device, EVIOCGRAB, 0);
         close(input_device);
     }
+
+    BREAK_MAIN_LOOP:
 
     destroy_uinput_device(output_device);
 
