@@ -175,6 +175,11 @@ int main(int argc, char** argv) {
         usleep(POLLING_INTERVAL);
     }
 
+    ioctl(output_device, UI_SET_EVBIT, EV_REL);
+    ioctl(output_device, UI_SET_RELBIT, REL_X);
+    ioctl(output_device, UI_SET_RELBIT, REL_Y);
+    ioctl(output_device, UI_SET_RELBIT, REL_WHEEL);
+
     ioctl_set(output_device, UI_SET_EVBIT, EV_KEY);
     for (int i = 0; i < KEY_CNT; ++i){
         ioctl_set(output_device, UI_SET_KEYBIT, i);
@@ -220,6 +225,9 @@ int main(int argc, char** argv) {
             }
 
             if (event.type != EV_KEY) {
+                if (write(output_device, &event, sizeof(event)) < 0) {
+                    exit_with_error("error: write");
+                }
                 continue;
             }
 
