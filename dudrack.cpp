@@ -87,8 +87,8 @@ void initHenkanTable(){
     henkanTable[KEY_C         ] = KEY_UP;
     henkanTable[KEY_V         ] = KEY_RIGHT;
     henkanTable[KEY_B         ] = KEY_X;
-    henkanTable[KEY_N         ] = KEY_B;
-    henkanTable[KEY_M         ] = KEY_GRAVE;
+    henkanTable[KEY_N         ] = KEY_HENKAN;
+    henkanTable[KEY_M         ] = KEY_MUHENKAN;
     henkanTable[KEY_COMMA     ] = KEY_HOME;
     henkanTable[KEY_DOT       ] = KEY_END;
     henkanTable[KEY_SLASH     ] = KEY_EQUAL;
