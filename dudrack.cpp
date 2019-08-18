@@ -7,6 +7,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <iostream>
+#include <cstring>
+#include <fstream>
 
 constexpr useconds_t POLLING_INTERVAL = 1;
 
@@ -97,11 +99,25 @@ void initHenkanTable(){
     henkanTable[KEY_KATAKANAHIRAGANA] = KEY_RIGHTALT;
 }
 
-static int do_terminate = 0;
-
 void exit_with_error(const char* str) {
     perror(str);
     exit(EXIT_FAILURE);
+}
+
+void log(std::string line) {
+#if 0
+    std::ofstream file;
+
+    file.open("/var/log/dudrack.log", std::ios::out | std::ios::app);
+    if (file.fail()) {
+        throw std::ios_base::failure(std::strerror(errno));
+    }
+
+    //make sure write fails with exception if something is wrong
+    file.exceptions(file.exceptions() | std::ios::failbit | std::ofstream::badbit);
+
+    file << line << std::endl;
+#endif
 }
 
 void send_event(int fd, int type, int code, int value) {
@@ -150,9 +166,24 @@ void destroy_uinput_device(int fd) {
     }
 }
 
+static int output_device;
+
 void on_signal(int signal) {
-    printf("TERM\n");
-    do_terminate = 1;
+    log("Received signal " + std::to_string(signal));
+
+    log("Destorying uinput");
+
+    destroy_uinput_device(output_device);
+
+    log("Destoried uinput");
+
+    log("Closing /dev/uinput");
+
+    close(output_device);
+
+    log("Closed /dev/uinput");
+
+    exit(EXIT_SUCCESS);
 }
 
 void set_signal_handler() {
@@ -170,10 +201,15 @@ int main(int argc, char** argv) {
         exit_with_error("Usage: dudrack <INPUT_DEVICE_EVENT>");
     }
 
-    int output_device;
+    log("Opening /dev/uinput");
+
     while ((output_device = open("/dev/uinput", O_WRONLY | O_NONBLOCK)) < 0) {
         usleep(POLLING_INTERVAL);
     }
+
+    log("Opened /dev/uinput");
+
+    log("Creating uinput");
 
     ioctl(output_device, UI_SET_EVBIT, EV_REL);
     ioctl(output_device, UI_SET_RELBIT, REL_X);
@@ -187,42 +223,50 @@ int main(int argc, char** argv) {
 
     create_uinput_device(output_device);
 
+    log("Created uinput");
+
     struct input_event event;
-    int size_read;
+
+    log("Setting signal handlers");
 
     set_signal_handler();
 
+    log("Set signal handlers");
+
     initNeutralTable();
     initHenkanTable();
+
+    log("Sending release events of all keys to uinput");
 
     for (int i = 0; i < KEY_CNT; ++i) {
         send_event(output_device, EV_KEY, i, 0);
     }
 
+    log("Sent release events of all keys to uinput");
+
     bool use_dudrack = true;
-    while (!do_terminate) {
+    while (true) {
+        log("Opening input device");
+
         int input_device;
         while ((input_device = open(argv[1], O_RDONLY)) < 0) {
-            if (do_terminate) {
-                goto BREAK_MAIN_LOOP;
-            }
-
             usleep(POLLING_INTERVAL);
         }
 
         ioctl(input_device, EVIOCGRAB, 1);
+
+        log("Opened input device");
 
         bool is_henkan = false;
         bool is_muhenkan = false;
         bool no_event_between_space_events = false;
 
         while (
+            log("Reading input device"),
             read(input_device, &event, sizeof(struct input_event))
             == sizeof(struct input_event)
         ) {
-            if (do_terminate) {
-                goto BREAK_MAIN_LOOP;
-            }
+            log("Read input device");
 
             if (event.type != EV_KEY) {
                 if (write(output_device, &event, sizeof(event)) < 0) {
@@ -264,6 +308,7 @@ int main(int argc, char** argv) {
                     break;
 
                 default:
+                    printf("%d\n", event.code);
                     if (event.value > 0) {
                         no_event_between_space_events = false;
 
@@ -295,12 +340,4 @@ int main(int argc, char** argv) {
         ioctl(input_device, EVIOCGRAB, 0);
         close(input_device);
     }
-
-    BREAK_MAIN_LOOP:
-
-    destroy_uinput_device(output_device);
-
-    close(output_device);
-
-    exit(EXIT_SUCCESS);
 }
