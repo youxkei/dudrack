@@ -51,8 +51,8 @@ void initNeutralTable(){
     neutralTable[KEY_DOT       ] = KEY_V;
     neutralTable[KEY_SLASH     ] = KEY_Z;
 
-    neutralTable[KEY_CAPSLOCK        ] = KEY_LEFTCTRL;
-    neutralTable[KEY_KATAKANAHIRAGANA] = KEY_RIGHTALT;
+    neutralTable[KEY_CAPSLOCK] = KEY_LEFTCTRL;
+    neutralTable[KEY_LEFTMETA] = KEY_LEFTALT;
 }
 
 int henkanTable[KEY_CNT];
@@ -95,8 +95,8 @@ void initHenkanTable(){
     henkanTable[KEY_DOT       ] = KEY_END;
     henkanTable[KEY_SLASH     ] = KEY_EQUAL;
 
-    henkanTable[KEY_CAPSLOCK        ] = KEY_LEFTCTRL;
-    henkanTable[KEY_KATAKANAHIRAGANA] = KEY_RIGHTALT;
+    henkanTable[KEY_CAPSLOCK] = KEY_LEFTCTRL;
+    henkanTable[KEY_LEFTMETA] = KEY_LEFTALT;
 }
 
 void exit_with_error(const char* str) {
@@ -285,12 +285,11 @@ int main(int argc, char** argv) {
 
             switch (event.code) {
                 case KEY_HENKAN:
-                case KEY_HANGEUL:
+                case KEY_KATAKANAHIRAGANA:
                     is_henkan = event.value;
                     break;
 
                 case KEY_MUHENKAN:
-                case KEY_HANJA:
                     is_muhenkan = event.value;
                     send_event(output_device, EV_KEY, KEY_LEFTSHIFT, event.value);
                     break;
@@ -308,7 +307,6 @@ int main(int argc, char** argv) {
                     break;
 
                 default:
-                    printf("%d\n", event.code);
                     if (event.value > 0) {
                         no_event_between_space_events = false;
 
