@@ -21,6 +21,7 @@
 #define KEY_HENKAN 0x8A
 #define KEY_MUHENKAN 0x8B
 #define KEY_HIRAGANA 0x88
+#define KEY_PRINT_SCREEN 0x46
 
 #define KEY_1 0x1E
 #define KEY_2 0x1F
@@ -109,16 +110,17 @@
 #define STICK_LEFT -1
 #define STICK_RIGHT 1
 
-#define STICK_DOWN_KEY KEY_A
-#define STICK_UP_KEY KEY_S
+#define STICK_DOWN_KEY KEY_Z
+#define STICK_UP_KEY KEY_X
 #define STICK_LEFT_KEY KEY_AT
 #define STICK_RIGHT_KEY KEY_BRACKET_OPEN
-#define BUTTON_0_MODIFIER bmRightAlt
-#define BUTTON_1_KEY KEY_ENTER
-#define BUTTON_2_MODIFIER bmLeftAlt
-#define BUTTON_3_KEY KEY_TAB
+#define BUTTON_0_KEY KEY_ENTER
+#define BUTTON_1_MODIFIER bmRightAlt
+#define BUTTON_2_KEY KEY_PRINT_SCREEN
+#define BUTTON_3_MODIFIER bmLeftShift
 #define BUTTON_4_MODIFIER bmLeftCtrl
-#define BUTTON_5_KEY KEY_SPACE
+#define BUTTON_5_KEY KEY_A
+#define BUTTON_6_KEY KEY_SPACE
 
 USB    Usb;
 USBHub Hub(&Usb);
@@ -414,18 +416,23 @@ void stgKeyDown(uint8_t key) {
 
             return;
 
-        case BUTTON_1_KEY:
-            Joystick.pressButton(1);
+        case BUTTON_0_KEY:
+            Joystick.pressButton(0);
 
             return;
 
-        case BUTTON_3_KEY:
-            Joystick.pressButton(3);
+        case BUTTON_2_KEY:
+            Joystick.pressButton(2);
 
             return;
 
         case BUTTON_5_KEY:
             Joystick.pressButton(5);
+
+            return;
+
+        case BUTTON_6_KEY:
+            Joystick.pressButton(6);
 
             return;
     }
@@ -457,18 +464,23 @@ void stgKeyUp(uint8_t key) {
 
             return;
 
-        case BUTTON_1_KEY:
-            Joystick.releaseButton(1);
+        case BUTTON_0_KEY:
+            Joystick.releaseButton(0);
 
             return;
 
-        case BUTTON_3_KEY:
-            Joystick.releaseButton(3);
+        case BUTTON_2_KEY:
+            Joystick.releaseButton(2);
 
             return;
 
         case BUTTON_5_KEY:
             Joystick.releaseButton(5);
+
+            return;
+
+        case BUTTON_6_KEY:
+            Joystick.releaseButton(6);
 
             return;
     }
@@ -477,16 +489,16 @@ void stgKeyUp(uint8_t key) {
 void stgModifiersChange(uint8_t modifiers) {
     MODIFIERKEYS mod = *((MODIFIERKEYS*)&modifiers);
 
-    if (mod.BUTTON_0_MODIFIER) {
-        Joystick.pressButton(0);
+    if (mod.BUTTON_1_MODIFIER) {
+        Joystick.pressButton(1);
     } else {
-        Joystick.releaseButton(0);
+        Joystick.releaseButton(1);
     }
 
-    if (mod.BUTTON_2_MODIFIER) {
-        Joystick.pressButton(2);
+    if (mod.BUTTON_3_MODIFIER) {
+        Joystick.pressButton(3);
     } else {
-        Joystick.releaseButton(2);
+        Joystick.releaseButton(3);
     }
 
     if (mod.BUTTON_4_MODIFIER) {
