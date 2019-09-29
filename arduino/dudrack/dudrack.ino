@@ -92,8 +92,8 @@
 
 #define KEY_COUNT 0xE8
 
-#define MOUSE_MOVE_COEFFICIENT 3.0
-#define MOUSE_SCROLL_COEFFICIENT 1.0
+#define MOUSE_MOVE_COEFFICIENT 4.0
+#define MOUSE_SCROLL_DENOMINATOR 4
 
 #define MODE_NEUTRAL 0
 #define MODE_DUDRACK 1
@@ -205,18 +205,32 @@ void initKeyMappings() {
     keyMappings[MAPPING_HENKAN][KEY_SLASH    ] = KEY_HAT;
 }
 
-int currentMode = MODE_DUDRACK;
 
 KeyReport keyReport = {};
-bool henkanPressed = false;
-bool muhenkanPressed = false;
-bool spacePressed = false;
-bool noEventBetweenSpaceEvents = false;
 
-bool downPressed = false;
-bool upPressed = false;
-bool leftPressed = false;
-bool rightPressed = false;
+struct {
+    int currentMode = MODE_DUDRACK;
+
+    bool henkanPressed = false;
+    bool muhenkanPressed = false;
+    bool spacePressed = false;
+    bool noEventBetweenSpaceEvents = false;
+} keyboardState;
+
+struct {
+    int scrollRemainder = 0;
+
+    bool rightPressed = false;
+    bool noMouseMoveBetweenRightEvents = false;
+} mouseState;
+
+struct {
+    bool downPressed = false;
+    bool upPressed = false;
+    bool leftPressed = false;
+    bool rightPressed = false;
+} gamepadState;
+
 
 bool removeFromKeyReport(KeyReport *report, uint8_t key){
     int i;
@@ -263,14 +277,14 @@ void releaseKey(uint8_t key) {
 }
 
 void releaseAllKeys() {
-    henkanPressed = false;
-    muhenkanPressed = false;
-    spacePressed = false;
+    keyboardState.henkanPressed = false;
+    keyboardState.muhenkanPressed = false;
+    keyboardState.spacePressed = false;
 
-    downPressed = false;
-    upPressed = false;
-    leftPressed = false;
-    rightPressed = false;
+    gamepadState.downPressed = false;
+    gamepadState.upPressed = false;
+    gamepadState.leftPressed = false;
+    gamepadState.rightPressed = false;
 
     keyReport.modifiers = 0;
 
@@ -292,7 +306,7 @@ void releaseModifier(uint8_t modifier) {
 }
 
 void changeModifiers(uint8_t modifiers) {
-    keyReport.modifiers = modifiers | (spacePressed ? MODIFIER_LEFT_SHIFT : 0);
+    keyReport.modifiers = modifiers | (keyboardState.spacePressed ? MODIFIER_LEFT_SHIFT : 0);
     Keyboard.sendReport(&keyReport);
 }
 
@@ -300,17 +314,17 @@ bool handleModeSwitch(uint8_t modifiers, uint8_t key) {
     if (modifiers & MODIFIER_RIGHT_SHIFT) {
         switch (key) {
             case KEY_1:
-                currentMode = MODE_NEUTRAL;
+                keyboardState.currentMode = MODE_NEUTRAL;
 
                 return true;
 
             case KEY_2:
-                currentMode = MODE_DUDRACK;
+                keyboardState.currentMode = MODE_DUDRACK;
 
                 return true;
 
             case KEY_3:
-                currentMode = MODE_STG;
+                keyboardState.currentMode = MODE_STG;
 
                 return true;
         }
@@ -322,30 +336,27 @@ bool handleModeSwitch(uint8_t modifiers, uint8_t key) {
 void dudrackKeyDown(uint8_t key) {
     switch (key) {
         case KEY_HENKAN:
-            henkanPressed = true;
+            keyboardState.henkanPressed = true;
 
             return;
 
         case KEY_MUHENKAN:
-            muhenkanPressed = true;
+            pressModifier(MODIFIER_LEFT_SHIFT);
+            keyboardState.muhenkanPressed = true;
 
             return;
 
         case KEY_SPACE:
             pressModifier(MODIFIER_LEFT_SHIFT);
-            spacePressed = true;
-            noEventBetweenSpaceEvents = true;
+            keyboardState.spacePressed = true;
+            keyboardState.noEventBetweenSpaceEvents = true;
 
             return;
 
         default:
-            noEventBetweenSpaceEvents = false;
+            keyboardState.noEventBetweenSpaceEvents = false;
 
-            if (muhenkanPressed) {
-                pressModifier(MODIFIER_LEFT_SHIFT);
-            }
-
-            if (henkanPressed || muhenkanPressed) {
+            if (keyboardState.henkanPressed || keyboardState.muhenkanPressed) {
                 pressKey(keyMappings[MAPPING_HENKAN][key]);
             } else {
                 pressKey(keyMappings[MAPPING_NEUTRAL][key]);
@@ -356,20 +367,20 @@ void dudrackKeyDown(uint8_t key) {
 void dudrackKeyUp(uint8_t key) {
     switch (key) {
         case KEY_HENKAN:
-            henkanPressed = false;
+            keyboardState.henkanPressed = false;
 
             return;
 
         case KEY_MUHENKAN:
-            muhenkanPressed = false;
+            keyboardState.muhenkanPressed = false;
             releaseModifier(MODIFIER_LEFT_SHIFT);
 
             return;
 
         case KEY_SPACE:
-            spacePressed = false;
+            keyboardState.spacePressed = false;
             releaseModifier(MODIFIER_LEFT_SHIFT);
-            if (noEventBetweenSpaceEvents) {
+            if (keyboardState.noEventBetweenSpaceEvents) {
                 pressKey(KEY_SPACE);
                 releaseKey(KEY_SPACE);
             }
@@ -379,10 +390,6 @@ void dudrackKeyUp(uint8_t key) {
         default:
             releaseKey(keyMappings[MAPPING_HENKAN][key]);
             releaseKey(keyMappings[MAPPING_NEUTRAL][key]);
-
-            if (muhenkanPressed) {
-                releaseModifier(MODIFIER_LEFT_SHIFT);
-            }
     }
 }
 
@@ -393,25 +400,25 @@ void dudrackModifiersChange(uint8_t modifiers) {
 void stgKeyDown(uint8_t key) {
     switch (key) {
         case STICK_DOWN_KEY:
-            downPressed = true;
+            gamepadState.downPressed = true;
             Joystick.setYAxis(STICK_DOWN);
 
             return;
 
         case STICK_UP_KEY:
-            upPressed = true;
+            gamepadState.upPressed = true;
             Joystick.setYAxis(STICK_UP);
 
             return;
 
         case STICK_LEFT_KEY:
-            leftPressed = true;
+            gamepadState.leftPressed = true;
             Joystick.setXAxis(STICK_LEFT);
 
             return;
 
         case STICK_RIGHT_KEY:
-            rightPressed = true;
+            gamepadState.rightPressed = true;
             Joystick.setXAxis(STICK_RIGHT);
 
             return;
@@ -441,26 +448,26 @@ void stgKeyDown(uint8_t key) {
 void stgKeyUp(uint8_t key) {
     switch (key) {
         case STICK_DOWN_KEY:
-            downPressed = false;
-            Joystick.setYAxis(upPressed ? STICK_UP : STICK_NEUTRAL);
+            gamepadState.downPressed = false;
+            Joystick.setYAxis(gamepadState.upPressed ? STICK_UP : STICK_NEUTRAL);
 
             return;
 
         case STICK_UP_KEY:
-            upPressed = false;
-            Joystick.setYAxis(downPressed ? STICK_DOWN : STICK_NEUTRAL);
+            gamepadState.upPressed = false;
+            Joystick.setYAxis(gamepadState.downPressed ? STICK_DOWN : STICK_NEUTRAL);
 
             return;
 
         case STICK_LEFT_KEY:
-            leftPressed = false;
-            Joystick.setXAxis(rightPressed ? STICK_RIGHT : STICK_NEUTRAL);
+            gamepadState.leftPressed = false;
+            Joystick.setXAxis(gamepadState.rightPressed ? STICK_RIGHT : STICK_NEUTRAL);
 
             return;
 
         case STICK_RIGHT_KEY:
-            rightPressed = false;
-            Joystick.setXAxis(leftPressed ? STICK_LEFT : STICK_NEUTRAL);
+            gamepadState.rightPressed = false;
+            Joystick.setXAxis(gamepadState.leftPressed ? STICK_LEFT : STICK_NEUTRAL);
 
             return;
 
@@ -558,7 +565,7 @@ public:
             return;
         }
 
-        switch (currentMode) {
+        switch (keyboardState.currentMode) {
             case MODE_NEUTRAL:
                 pressKey(key);
                 return;
@@ -579,7 +586,7 @@ public:
         Serial.println(key, HEX);
 #endif
 
-        switch (currentMode) {
+        switch (keyboardState.currentMode) {
             case MODE_NEUTRAL:
                 releaseKey(key);
                 return;
@@ -602,7 +609,7 @@ public:
         Serial.println(after, HEX);
 #endif
 
-        switch (currentMode) {
+        switch (keyboardState.currentMode) {
             case MODE_NEUTRAL:
                 changeModifiers(after);
                 return;
@@ -621,12 +628,20 @@ public:
 class : public MouseReportParser {
 protected:
     virtual void OnMouseMove(MOUSEINFO *mouseInfo)        {
-        if (muhenkanPressed || henkanPressed) {
+        if (mouseState.rightPressed) {
+            mouseState.noMouseMoveBetweenRightEvents = false;
+
+            int dy = -mouseInfo->dY + mouseState.scrollRemainder;
+            int adjustedDy = dy / MOUSE_SCROLL_DENOMINATOR;
+            mouseState.scrollRemainder = dy % MOUSE_SCROLL_DENOMINATOR;
+
 #if OUTPUT_TO_SERIAL
             Serial.print("mouse scroll: ");
-            Serial.println(min(1, max(-1, (int8_t)(-mouseInfo->dY * MOUSE_SCROLL_COEFFICIENT))));
+            Serial.println(adjustedDy);
+            Serial.print("mouse scroll remainder: ");
+            Serial.println(mouseState.scrollRemainder);
 #endif
-            Mouse.move(0, 0, min(1, max(-1, (int8_t)(-mouseInfo->dY * MOUSE_SCROLL_COEFFICIENT))));
+            Mouse.move(0, 0, adjustedDy);
         } else {
 #if OUTPUT_TO_SERIAL
             Serial.print("mouse move: ");
@@ -644,8 +659,20 @@ protected:
 
     virtual void OnLeftButtonDown(MOUSEINFO *mouseInfo)   { Mouse.press(MOUSE_LEFT); }
     virtual void OnLeftButtonUp(MOUSEINFO *mouseInfo)     { Mouse.release(MOUSE_LEFT); }
-    virtual void OnRightButtonDown(MOUSEINFO *mouseInfo)  { Mouse.press(MOUSE_RIGHT); }
-    virtual void OnRightButtonUp(MOUSEINFO *mouseInfo)    { Mouse.release(MOUSE_RIGHT); }
+
+    virtual void OnRightButtonDown(MOUSEINFO *mouseInfo)  {
+        mouseState.rightPressed = true;
+        mouseState.noMouseMoveBetweenRightEvents = true;
+    }
+
+    virtual void OnRightButtonUp(MOUSEINFO *mouseInfo)    {
+        mouseState.rightPressed = false;
+
+        if (mouseState.noMouseMoveBetweenRightEvents) {
+            Mouse.press(MOUSE_RIGHT);
+            Mouse.release(MOUSE_RIGHT);
+        }
+    }
 } mouseReportParser;
 
 
