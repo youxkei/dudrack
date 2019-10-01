@@ -1,4 +1,4 @@
-#define USBCON
+//#define USBCON
 
 #include <hidboot.h>
 #include <hiduniversal.h>
@@ -306,7 +306,7 @@ void releaseModifier(uint8_t modifier) {
 }
 
 void changeModifiers(uint8_t modifiers) {
-    keyReport.modifiers = modifiers | (keyboardState.spacePressed ? MODIFIER_LEFT_SHIFT : 0);
+    keyReport.modifiers = modifiers | (keyboardState.muhenkanPressed || keyboardState.spacePressed ? MODIFIER_LEFT_SHIFT : 0);
     Keyboard.sendReport(&keyReport);
 }
 
