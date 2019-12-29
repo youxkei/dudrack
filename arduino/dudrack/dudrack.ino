@@ -6,6 +6,8 @@
 
 #define OUTPUT_TO_SERIAL 0
 
+#define ENABLE_GAMEPAD 1
+
 #define NUM_REPORT_KEYS 6
 
 #define KEY_COLON         KEY_QUOTE
@@ -27,30 +29,32 @@
 
 #define MODE_NEUTRAL 0
 #define MODE_DUDRACK 1
-#define MODE_STG 2
+#define MODE_GAMEPAD 2
 #define MODE_COUNT 3
 
 #define MAPPING_NEUTRAL 0
 #define MAPPING_HENKAN 1
 #define MAPPING_COUNT 2
 
-#define STICK_NEUTRAL 0
-#define STICK_DOWN 0x7000
-#define STICK_UP -0x7000
-#define STICK_LEFT -0x7000
-#define STICK_RIGHT 0x7000
+#if ENABLE_GAMEPAD
+#   define STICK_NEUTRAL 0
+#   define STICK_DOWN 0x7FFF
+#   define STICK_UP -0x7FFF
+#   define STICK_LEFT -0x7FFF
+#   define STICK_RIGHT 0x7FFF
 
-#define STICK_DOWN_KEY  KEY_K
-#define STICK_UP_KEY    KEY_I
-#define STICK_LEFT_KEY  KEY_J
-#define STICK_RIGHT_KEY KEY_L
-#define BUTTON_1_KEY    KEY_D
-#define BUTTON_2_KEY    KEY_F
-#define BUTTON_3_KEY    KEY_G
-#define BUTTON_4_KEY    KEY_S
-#define BUTTON_5_KEY    KEY_MUHENKAN
-#define BUTTON_6_KEY    KEY_HENKAN
-#define BUTTON_7_KEY    KEY_SPACE
+#   define STICK_DOWN_KEY  KEY_HENKAN
+#   define STICK_UP_KEY    KEY_I
+#   define STICK_LEFT_KEY  KEY_J
+#   define STICK_RIGHT_KEY KEY_O
+#   define BUTTON_1_KEY    KEY_D
+#   define BUTTON_2_KEY    KEY_F
+#   define BUTTON_3_KEY    KEY_G
+#   define BUTTON_4_KEY    KEY_S
+#   define BUTTON_5_KEY    KEY_LEFT_ALT
+#   define BUTTON_6_KEY    KEY_MUHENKAN
+#   define BUTTON_7_KEY    KEY_SPACE
+#endif
 
 USB    Usb;
 USBHub Hub(&Usb);
@@ -153,12 +157,14 @@ struct {
     bool noMouseMoveBetweenRightEvents = false;
 } mouseState;
 
+#if ENABLE_GAMEPAD
 struct {
     bool downPressed = false;
     bool upPressed = false;
     bool leftPressed = false;
     bool rightPressed = false;
 } gamepadState;
+#endif
 
 void releaseLeftShift() {
     if (!keyboardState.muhenkanPressed
@@ -173,13 +179,16 @@ void releaseAllKeys() {
     keyboardState.muhenkanPressed = false;
     keyboardState.spacePressed = false;
 
+    Keyboard.releaseAll();
+
+#if ENABLE_GAMEPAD
     gamepadState.downPressed = false;
     gamepadState.upPressed = false;
     gamepadState.leftPressed = false;
     gamepadState.rightPressed = false;
 
-    Keyboard.releaseAll();
     Gamepad.releaseAll();
+#endif
 }
 
 bool handleModeSwitch(uint8_t mod, KeyboardKeycode key) {
@@ -198,7 +207,9 @@ bool handleModeSwitch(uint8_t mod, KeyboardKeycode key) {
                 return true;
 
             case KEY_3:
-                keyboardState.currentMode = MODE_STG;
+#if ENABLE_GAMEPAD
+                keyboardState.currentMode = MODE_GAMEPAD;
+#endif
 
                 return true;
         }
@@ -280,7 +291,8 @@ void dudrackKeyUp(KeyboardKeycode key) {
     }
 }
 
-void stgKeyDown(KeyboardKeycode key) {
+#if ENABLE_GAMEPAD
+void gamepadKeyDown(KeyboardKeycode key) {
     switch (key) {
         case STICK_DOWN_KEY:
             gamepadState.downPressed = true;
@@ -345,7 +357,7 @@ void stgKeyDown(KeyboardKeycode key) {
     Gamepad.write();
 }
 
-void stgKeyUp(KeyboardKeycode key) {
+void gamepadKeyUp(KeyboardKeycode key) {
     switch (key) {
         case STICK_DOWN_KEY:
             gamepadState.downPressed = false;
@@ -409,6 +421,7 @@ void stgKeyUp(KeyboardKeycode key) {
 
     Gamepad.write();
 }
+#endif
 
 class : public KeyboardReportParser {
 public:
@@ -504,9 +517,11 @@ private:
                 dudrackKeyDown(key);
                 return;
 
-            case MODE_STG:
-                stgKeyDown(key);
+#if ENABLE_GAMEPAD
+            case MODE_GAMEPAD:
+                gamepadKeyDown(key);
                 return;
+#endif
         }
     }
 
@@ -527,9 +542,11 @@ private:
                 dudrackKeyUp(key);
                 return;
 
-            case MODE_STG:
-                stgKeyUp(key);
+#if ENABLE_GAMEPAD
+            case MODE_GAMEPAD:
+                gamepadKeyUp(key);
                 return;
+#endif
         }
     }
 } keyboardReportParser;
@@ -606,7 +623,10 @@ void setup() {
 
     Mouse.begin();
     Keyboard.begin();
+
+#if ENABLE_GAMEPAD
     Gamepad.begin();
+#endif
 }
 
 void loop() {
