@@ -6,11 +6,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/epoll.h>
 #include <iostream>
 #include <cstring>
 #include <fstream>
 
 constexpr useconds_t POLLING_INTERVAL = 1;
+constexpr size_t MAX_EPOLL_EVENTS = 16;
+constexpr bool LOG_ENABLED = false;
+constexpr bool SANDS_ENABLED = true;
 
 int neutralTable[KEY_CNT];
 void initNeutralTable(){
@@ -105,24 +109,23 @@ void exit_with_error(const char* str) {
 }
 
 void log(std::string line) {
-#if 0
-    std::ofstream file;
+    if constexpr (LOG_ENABLED) {
+        std::ofstream file;
 
-    file.open("/var/log/dudrack.log", std::ios::out | std::ios::app);
-    if (file.fail()) {
-        throw std::ios_base::failure(std::strerror(errno));
+        file.open("/var/log/dudrack.log", std::ios::out | std::ios::app);
+        if (file.fail()) {
+            throw std::ios_base::failure(std::strerror(errno));
+        }
+
+        //make sure write fails with exception if something is wrong
+        file.exceptions(file.exceptions() | std::ios::failbit | std::ofstream::badbit);
+
+        file << line << std::endl;
     }
-
-    //make sure write fails with exception if something is wrong
-    file.exceptions(file.exceptions() | std::ios::failbit | std::ofstream::badbit);
-
-    file << line << std::endl;
-#endif
 }
 
 void send_event(int fd, int type, int code, int value) {
-    struct input_event event;
-    memset(&event, 0, sizeof(event));
+    struct input_event event = {};
 
     gettimeofday(&event.time, NULL);
 
@@ -142,8 +145,7 @@ void ioctl_set(int fd, int set, int value) {
 }
 
 void create_uinput_device (int fd) {
-    struct uinput_user_dev uidev;
-    memset(&uidev, 0, sizeof(uidev));
+    struct uinput_user_dev uidev = {};
 
     snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "Dudrack");
     uidev.id.bustype = BUS_USB;
@@ -166,20 +168,20 @@ void destroy_uinput_device(int fd) {
     }
 }
 
-static int output_device;
+static int output_fd;
 
 void on_signal(int signal) {
     log("Received signal " + std::to_string(signal));
 
     log("Destorying uinput");
 
-    destroy_uinput_device(output_device);
+    destroy_uinput_device(output_fd);
 
     log("Destoried uinput");
 
     log("Closing /dev/uinput");
 
-    close(output_device);
+    close(output_fd);
 
     log("Closed /dev/uinput");
 
@@ -196,14 +198,42 @@ void set_signal_handler() {
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
 }
 
-int main(int argc, char** argv) {
-    if (argc != 2) {
-        exit_with_error("Usage: dudrack <INPUT_DEVICE_EVENT>");
+int open_input_device(int epoll_fd, char const* path) {
+    int input_fd = open(path, O_RDONLY);
+
+    if (input_fd < 0) {
+        log(std::string("failed to open ").append(path));
+        return -1;
     }
+
+    struct epoll_event ev = {};
+    ev.events = EPOLLIN;
+    ev.data.fd = input_fd;
+
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, input_fd, &ev) != 0) {
+        log(std::string("failed to add epoll to input ").append(path));
+        return -1;
+    }
+
+    ioctl(input_fd, EVIOCGRAB, 1);
+
+    return input_fd;
+}
+
+int main(int argc, char const** argv) {
+    if (argc <= 1) {
+        exit_with_error("Usage: dudrack <INPUT_DEVICE_EVENT>...");
+    }
+
+    int const num_inputs = argc - 1;
+
+    log("Creating epoll");
+
+    int epoll_fd = epoll_create(MAX_EPOLL_EVENTS);
 
     log("Opening /dev/uinput");
 
-    while ((output_device = open("/dev/uinput", O_WRONLY | O_NONBLOCK)) < 0) {
+    while ((output_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK)) < 0) {
         usleep(POLLING_INTERVAL);
     }
 
@@ -211,21 +241,19 @@ int main(int argc, char** argv) {
 
     log("Creating uinput");
 
-    ioctl(output_device, UI_SET_EVBIT, EV_REL);
-    ioctl(output_device, UI_SET_RELBIT, REL_X);
-    ioctl(output_device, UI_SET_RELBIT, REL_Y);
-    ioctl(output_device, UI_SET_RELBIT, REL_WHEEL);
+    ioctl(output_fd, UI_SET_EVBIT, EV_REL);
+    ioctl(output_fd, UI_SET_RELBIT, REL_X);
+    ioctl(output_fd, UI_SET_RELBIT, REL_Y);
+    ioctl(output_fd, UI_SET_RELBIT, REL_WHEEL);
 
-    ioctl_set(output_device, UI_SET_EVBIT, EV_KEY);
+    ioctl_set(output_fd, UI_SET_EVBIT, EV_KEY);
     for (int i = 0; i < KEY_CNT; ++i){
-        ioctl_set(output_device, UI_SET_KEYBIT, i);
+        ioctl_set(output_fd, UI_SET_KEYBIT, i);
     }
 
-    create_uinput_device(output_device);
+    create_uinput_device(output_fd);
 
     log("Created uinput");
-
-    struct input_event event;
 
     log("Setting signal handlers");
 
@@ -239,103 +267,186 @@ int main(int argc, char** argv) {
     log("Sending release events of all keys to uinput");
 
     for (int i = 0; i < KEY_CNT; ++i) {
-        send_event(output_device, EV_KEY, i, 0);
+        send_event(output_fd, EV_KEY, i, 0);
     }
 
     log("Sent release events of all keys to uinput");
 
     bool use_dudrack = true;
+    struct epoll_event events[MAX_EPOLL_EVENTS];
+    struct input_event event;
+
     while (true) {
         log("Opening input device");
 
-        int input_device;
-        while ((input_device = open(argv[1], O_RDONLY)) < 0) {
-            usleep(POLLING_INTERVAL);
-        }
+        int input_fds[num_inputs];
+        for (int i = 0; i < num_inputs; ++i) {
+            while ((input_fds[i] = open_input_device(epoll_fd, argv[i + 1])) < 0) {
+                usleep(POLLING_INTERVAL);
+            }
 
-        ioctl(input_device, EVIOCGRAB, 1);
+            ioctl(input_fds[i], EVIOCGRAB, 1);
+        }
 
         log("Opened input device");
 
+        bool is_left_control = false;
+        bool is_right_shift = false;
+        bool is_wheel = false;
         bool is_henkan = false;
         bool is_muhenkan = false;
         bool no_event_between_space_events = false;
 
-        while (
-            log("Reading input device"),
-            read(input_device, &event, sizeof(struct input_event))
-            == sizeof(struct input_event)
-        ) {
+        while (true) {
+            log("Reading input device");
+
+            int timeout = -1;
+            int num_events = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, timeout);
+
             log("Read input device");
 
-            if (event.type != EV_KEY) {
-                if (write(output_device, &event, sizeof(event)) < 0) {
-                    exit_with_error("error: write");
+            for (int i = 0; i < num_events; ++i) {
+                if (read(events[i].data.fd, &event, sizeof(struct input_event)) != sizeof(struct input_event)) {
+                    goto FAILED_TO_READ;
                 }
-                continue;
-            }
 
-            if (event.code == KEY_PAGEUP) {
-                use_dudrack = true;
-                continue;
-            } else if (event.code == KEY_PAGEDOWN) {
-                use_dudrack = false;
-                continue;
-            }
+                switch (event.type) {
+                case EV_REL:
+                    if (is_wheel) {
+                        switch (event.code) {
+                        case REL_X:
+                            event.value = -event.value;
 
-            switch (event.code) {
-                case KEY_HENKAN:
-                case KEY_KATAKANAHIRAGANA:
-                    is_henkan = event.value;
+                            event.code = REL_HWHEEL;
+                            event.value = event.value < 0 ? -1 : 1;
+                            break;
+
+                        case REL_Y:
+                            event.value = -event.value;
+
+                            event.code = REL_WHEEL;
+                            event.value = event.value < 0 ? -1 : 1;
+                            break;
+                        }
+                    } else {
+                        event.value *= 2;
+                    }
+
+                    if (write(output_fd, &event, sizeof(event)) < 0) {
+                        exit_with_error("error: write");
+                    }
                     break;
 
-                case KEY_MUHENKAN:
-                    is_muhenkan = event.value;
-                    send_event(output_device, EV_KEY, KEY_LEFTSHIFT, event.value);
-                    break;
+                case EV_KEY:
+                    if (is_right_shift && event.code == KEY_2) {
+                        use_dudrack = true;
+                        continue;
+                    } else if (is_right_shift && event.code == KEY_1) {
+                        use_dudrack = false;
+                        continue;
+                    } else if (is_left_control && event.code == KEY_D && event.value < 2) {
+                        send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
+                        continue;
+                    } else if (is_left_control && event.code == KEY_F && event.value < 2) {
+                        send_event(output_fd, EV_KEY, BTN_RIGHT, event.value);
+                        continue;
+                    } else if (is_left_control && event.code == KEY_S) {
+                        is_wheel = event.value;
+                        continue;
+                    }
 
-                case KEY_SPACE:
-                    send_event(output_device, EV_KEY, KEY_LEFTSHIFT, event.value);
+                    switch (event.code) {
+                        case KEY_HENKAN:
+                        case KEY_KATAKANAHIRAGANA:
+                        case BTN_RIGHT:
+                            is_henkan = event.value;
+                            break;
 
-                    // SandS
-                    if (event.value) {
-                        no_event_between_space_events = true;
-                    } else if (!event.value && no_event_between_space_events) {
-                        send_event(output_device, EV_KEY, KEY_SPACE, 1);
-                        send_event(output_device, EV_KEY, KEY_SPACE, 0);
+                        case KEY_MUHENKAN:
+                        case BTN_LEFT:
+                            send_event(output_fd, EV_KEY, KEY_LEFTSHIFT, event.value);
+
+                            if constexpr (SANDS_ENABLED) {
+                                is_muhenkan = event.value;
+                            }
+
+                            break;
+
+                        case KEY_SPACE:
+                            if constexpr (SANDS_ENABLED) {
+                                send_event(output_fd, EV_KEY, KEY_LEFTSHIFT, event.value);
+
+                                // SandS
+                                if (event.value) {
+                                    no_event_between_space_events = true;
+                                } else if (!event.value && no_event_between_space_events) {
+                                    send_event(output_fd, EV_KEY, KEY_SPACE, 1);
+                                    send_event(output_fd, EV_KEY, KEY_SPACE, 0);
+                                }
+                            } else {
+                                send_event(output_fd, EV_KEY, KEY_SPACE, event.value);
+                            }
+                            break;
+
+                        case KEY_LEFTCTRL:
+                            is_left_control = event.value;
+
+                            if (is_left_control == 0) {
+                                is_wheel = false;
+                            }
+                            break;
+
+                        case KEY_RIGHTSHIFT:
+                            is_right_shift = event.value;
+                            break;
+
+                        default:
+                            if (event.value > 0) {
+                                no_event_between_space_events = false;
+
+                                send_event(
+                                  output_fd,
+                                  EV_KEY,
+                                  use_dudrack
+                                  ? ((is_henkan || is_muhenkan)
+                                      ? henkanTable[event.code]
+                                      : neutralTable[event.code])
+                                  : event.code,
+                                  event.value
+                                );
+                            } else {
+                                if (use_dudrack) {
+                                    send_event(output_fd, EV_KEY, neutralTable[event.code], 0);
+                                    send_event(output_fd, EV_KEY, henkanTable[event.code], 0);
+                                } else {
+                                    send_event(output_fd, EV_KEY, event.code, 0);
+                                }
+                            }
+
+                            break;
                     }
                     break;
 
                 default:
-                    if (event.value > 0) {
-                        no_event_between_space_events = false;
-
-                        send_event(
-                            output_device,
-                            EV_KEY,
-                            use_dudrack
-                                ? ((is_henkan || is_muhenkan)
-                                    ? henkanTable[event.code]
-                                    : neutralTable[event.code])
-                                : event.code,
-                            event.value
-                        );
-                    } else {
-                        if (use_dudrack) {
-                            send_event(output_device, EV_KEY, neutralTable[event.code], 0);
-                            send_event(output_device, EV_KEY, henkanTable[event.code], 0);
-                        } else {
-                            send_event(output_device, EV_KEY, event.code, 0);
-                        }
+                    if (write(output_fd, &event, sizeof(event)) < 0) {
+                        exit_with_error("error: write");
                     }
-
-                    break;
+                    continue;
+                }
             }
 
-            send_event(output_device, EV_SYN, SYN_REPORT, 0);
+            send_event(output_fd, EV_SYN, SYN_REPORT, 0);
         }
 
-        ioctl(input_device, EVIOCGRAB, 0);
-        close(input_device);
+FAILED_TO_READ:
+        for (int i = 0; i < num_inputs; ++i) {
+            struct epoll_event ev = {};
+            ev.events = EPOLLIN;
+            ev.data.fd = input_fds[i];
+
+            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, input_fds[i], &ev);
+            ioctl(input_fds[i], EVIOCGRAB, 0);
+            close(input_fds[i]);
+        }
     }
 }
