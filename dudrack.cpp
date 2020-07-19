@@ -16,6 +16,7 @@ constexpr size_t MAX_EPOLL_EVENTS = 16;
 constexpr bool LOG_ENABLED = false;
 constexpr bool SANDS_ENABLED = true;
 constexpr int MAP_SWITCH_KEY = KEY_RIGHTSHIFT;
+constexpr int MOUSE_BUTTON_KEY = KEY_TAB;
 constexpr int MOUSE_SCROLL_DENOMINATOR = 4;
 constexpr int MOUSE_MOVE_COEFFICIENT = 4;
 
@@ -296,8 +297,8 @@ int main(int argc, char const** argv) {
 
         log("Opened input device");
 
-        bool is_left_control = false;
-        bool is_right_shift = false;
+        bool is_mouse_button = false;
+        bool is_map_switch = false;
         bool is_wheel = false;
         bool is_henkan = false;
         bool is_muhenkan = false;
@@ -352,16 +353,16 @@ int main(int argc, char const** argv) {
                         break;
 
                     case EV_KEY:
-                        if (is_right_shift && event.code == KEY_2) {
+                        if (is_map_switch && event.code == KEY_2) {
                             use_dudrack = true;
                             continue;
-                        } else if (is_right_shift && event.code == KEY_1) {
+                        } else if (is_map_switch && event.code == KEY_1) {
                             use_dudrack = false;
                             continue;
-                        } else if (is_left_control && event.code == KEY_D && event.value < 2) {
+                        } else if (is_mouse_button && event.code == KEY_D && event.value < 2) {
                             send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
                             continue;
-                        } else if (is_left_control && event.code == KEY_F && event.value < 2) {
+                        } else if (is_mouse_button && event.code == KEY_F && event.value < 2) {
                             send_event(output_fd, EV_KEY, BTN_RIGHT, event.value);
                             continue;
                         }
@@ -396,8 +397,8 @@ int main(int argc, char const** argv) {
                                 }
                                 break;
 
-                            case KEY_LEFTCTRL:
-                                is_left_control = event.value;
+                            case MOUSE_BUTTON_KEY:
+                                is_mouse_button = event.value;
 
                                 if (event.value == 0) {
                                     send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
@@ -405,8 +406,8 @@ int main(int argc, char const** argv) {
                                 }
                                 break;
 
-                            case KEY_RIGHTSHIFT:
-                                is_right_shift = event.value;
+                            case MAP_SWITCH_KEY:
+                                is_map_switch = event.value;
                                 break;
 
                             default:
