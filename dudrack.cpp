@@ -15,6 +15,9 @@ constexpr useconds_t POLLING_INTERVAL = 1;
 constexpr size_t MAX_EPOLL_EVENTS = 16;
 constexpr bool LOG_ENABLED = false;
 constexpr bool SANDS_ENABLED = true;
+constexpr int MAP_SWITCH_KEY = KEY_RIGHTSHIFT;
+constexpr int MOUSE_SCROLL_DENOMINATOR = 4;
+constexpr int MOUSE_MOVE_COEFFICIENT = 4;
 
 int neutralTable[KEY_CNT];
 void initNeutralTable(){
@@ -233,7 +236,7 @@ int main(int argc, char const** argv) {
 
     log("Opening /dev/uinput");
 
-    while ((output_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK)) < 0) {
+    while ((output_fd = open("/dev/uinput", O_WRONLY)) < 0) {
         usleep(POLLING_INTERVAL);
     }
 
@@ -245,6 +248,7 @@ int main(int argc, char const** argv) {
     ioctl(output_fd, UI_SET_RELBIT, REL_X);
     ioctl(output_fd, UI_SET_RELBIT, REL_Y);
     ioctl(output_fd, UI_SET_RELBIT, REL_WHEEL);
+    ioctl(output_fd, UI_SET_RELBIT, REL_HWHEEL);
 
     ioctl_set(output_fd, UI_SET_EVBIT, EV_KEY);
     for (int i = 0; i < KEY_CNT; ++i){
@@ -296,6 +300,8 @@ int main(int argc, char const** argv) {
         bool is_henkan = false;
         bool is_muhenkan = false;
         bool no_event_between_space_events = false;
+        int vertical_scroll_remainder = 0;
+        int horizontal_scroll_remainder = 0;
 
         while (true) {
             log("Reading input device");
@@ -311,127 +317,129 @@ int main(int argc, char const** argv) {
                 }
 
                 switch (event.type) {
-                case EV_REL:
-                    if (is_wheel) {
-                        switch (event.code) {
-                        case REL_X:
-                            event.value = -event.value;
+                    case EV_REL:
+                        if (is_wheel) {
+                            switch (event.code) {
+                                case REL_X: {
+                                    int dx = event.value + horizontal_scroll_remainder;
+                                    int adjusted_dx = dx / MOUSE_SCROLL_DENOMINATOR;
+                                    horizontal_scroll_remainder = dx % MOUSE_SCROLL_DENOMINATOR;
 
-                            event.code = REL_HWHEEL;
-                            event.value = event.value < 0 ? -1 : 1;
-                            break;
+                                    event.code = REL_HWHEEL;
+                                    event.value = adjusted_dx;
+                                    break;
+                                }
 
-                        case REL_Y:
-                            event.value = -event.value;
+                                case REL_Y: {
+                                    int dy = -event.value + vertical_scroll_remainder;
+                                    int adjusted_dy = dy / MOUSE_SCROLL_DENOMINATOR;
+                                    vertical_scroll_remainder = dy % MOUSE_SCROLL_DENOMINATOR;
 
-                            event.code = REL_WHEEL;
-                            event.value = event.value < 0 ? -1 : 1;
-                            break;
+                                    event.code = REL_WHEEL;
+                                    event.value = adjusted_dy;
+                                    break;
+                                }
+                            }
+                        } else {
+                            event.value *= MOUSE_MOVE_COEFFICIENT;
                         }
-                    } else {
-                        event.value *= 2;
-                    }
 
-                    if (write(output_fd, &event, sizeof(event)) < 0) {
-                        exit_with_error("error: write");
-                    }
-                    break;
+                        if (write(output_fd, &event, sizeof(event)) < 0) {
+                            exit_with_error("error: write");
+                        }
+                        break;
 
-                case EV_KEY:
-                    if (is_right_shift && event.code == KEY_2) {
-                        use_dudrack = true;
-                        continue;
-                    } else if (is_right_shift && event.code == KEY_1) {
-                        use_dudrack = false;
-                        continue;
-                    } else if (is_left_control && event.code == KEY_D && event.value < 2) {
-                        send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
-                        continue;
-                    } else if (is_left_control && event.code == KEY_F && event.value < 2) {
-                        send_event(output_fd, EV_KEY, BTN_RIGHT, event.value);
-                        continue;
-                    } else if (is_left_control && event.code == KEY_S) {
-                        is_wheel = event.value;
-                        continue;
-                    }
+                    case EV_KEY:
+                        if (is_right_shift && event.code == KEY_2) {
+                            use_dudrack = true;
+                            continue;
+                        } else if (is_right_shift && event.code == KEY_1) {
+                            use_dudrack = false;
+                            continue;
+                        } else if (is_left_control && event.code == KEY_D && event.value < 2) {
+                            send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
+                            continue;
+                        } else if (is_left_control && event.code == KEY_F && event.value < 2) {
+                            send_event(output_fd, EV_KEY, BTN_RIGHT, event.value);
+                            continue;
+                        }
 
-                    switch (event.code) {
-                        case KEY_HENKAN:
-                        case KEY_KATAKANAHIRAGANA:
-                        case BTN_RIGHT:
-                            is_henkan = event.value;
-                            break;
+                        switch (event.code) {
+                            case KEY_HENKAN:
+                            case KEY_KATAKANAHIRAGANA:
+                            case BTN_RIGHT:
+                                is_henkan = event.value;
+                                is_wheel = event.value;
+                                break;
 
-                        case KEY_MUHENKAN:
-                        case BTN_LEFT:
-                            send_event(output_fd, EV_KEY, KEY_LEFTSHIFT, event.value);
-
-                            if constexpr (SANDS_ENABLED) {
-                                is_muhenkan = event.value;
-                            }
-
-                            break;
-
-                        case KEY_SPACE:
-                            if constexpr (SANDS_ENABLED) {
+                            case KEY_MUHENKAN:
+                            case BTN_LEFT:
                                 send_event(output_fd, EV_KEY, KEY_LEFTSHIFT, event.value);
+                                is_muhenkan = event.value;
 
-                                // SandS
-                                if (event.value) {
-                                    no_event_between_space_events = true;
-                                } else if (!event.value && no_event_between_space_events) {
-                                    send_event(output_fd, EV_KEY, KEY_SPACE, 1);
-                                    send_event(output_fd, EV_KEY, KEY_SPACE, 0);
-                                }
-                            } else {
-                                send_event(output_fd, EV_KEY, KEY_SPACE, event.value);
-                            }
-                            break;
+                                break;
 
-                        case KEY_LEFTCTRL:
-                            is_left_control = event.value;
+                            case KEY_SPACE:
+                                if constexpr (SANDS_ENABLED) {
+                                    send_event(output_fd, EV_KEY, KEY_LEFTSHIFT, event.value);
 
-                            if (is_left_control == 0) {
-                                is_wheel = false;
-                            }
-                            break;
-
-                        case KEY_RIGHTSHIFT:
-                            is_right_shift = event.value;
-                            break;
-
-                        default:
-                            if (event.value > 0) {
-                                no_event_between_space_events = false;
-
-                                send_event(
-                                  output_fd,
-                                  EV_KEY,
-                                  use_dudrack
-                                  ? ((is_henkan || is_muhenkan)
-                                      ? henkanTable[event.code]
-                                      : neutralTable[event.code])
-                                  : event.code,
-                                  event.value
-                                );
-                            } else {
-                                if (use_dudrack) {
-                                    send_event(output_fd, EV_KEY, neutralTable[event.code], 0);
-                                    send_event(output_fd, EV_KEY, henkanTable[event.code], 0);
+                                    // SandS
+                                    if (event.value > 0) {
+                                        no_event_between_space_events = true;
+                                    } else if (event.value == 0 && no_event_between_space_events) {
+                                        send_event(output_fd, EV_KEY, KEY_SPACE, 1);
+                                        send_event(output_fd, EV_KEY, KEY_SPACE, 0);
+                                    }
                                 } else {
-                                    send_event(output_fd, EV_KEY, event.code, 0);
+                                    send_event(output_fd, EV_KEY, KEY_SPACE, event.value);
                                 }
-                            }
+                                break;
 
-                            break;
-                    }
-                    break;
+                            case KEY_LEFTCTRL:
+                                is_left_control = event.value;
 
-                default:
-                    if (write(output_fd, &event, sizeof(event)) < 0) {
-                        exit_with_error("error: write");
-                    }
-                    continue;
+                                if (event.value == 0) {
+                                    send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
+                                    send_event(output_fd, EV_KEY, BTN_RIGHT, event.value);
+                                }
+                                break;
+
+                            case KEY_RIGHTSHIFT:
+                                is_right_shift = event.value;
+                                break;
+
+                            default:
+                                if (event.value > 0) {
+                                    no_event_between_space_events = false;
+
+                                    send_event(
+                                      output_fd,
+                                      EV_KEY,
+                                      use_dudrack
+                                      ? ((is_henkan || is_muhenkan)
+                                          ? henkanTable[event.code]
+                                          : neutralTable[event.code])
+                                      : event.code,
+                                      event.value
+                                    );
+                                } else {
+                                    if (use_dudrack) {
+                                        send_event(output_fd, EV_KEY, neutralTable[event.code], 0);
+                                        send_event(output_fd, EV_KEY, henkanTable[event.code], 0);
+                                    } else {
+                                        send_event(output_fd, EV_KEY, event.code, 0);
+                                    }
+                                }
+
+                                break;
+                        }
+                        break;
+
+                    default:
+                        if (write(output_fd, &event, sizeof(event)) < 0) {
+                            exit_with_error("error: write");
+                        }
+                        continue;
                 }
             }
 
