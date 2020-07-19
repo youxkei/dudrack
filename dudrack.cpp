@@ -18,7 +18,8 @@ constexpr bool SANDS_ENABLED = true;
 constexpr int MAP_SWITCH_KEY = KEY_RIGHTSHIFT;
 constexpr int MOUSE_BUTTON_KEY = KEY_TAB;
 constexpr int MOUSE_SCROLL_DENOMINATOR = 4;
-constexpr int MOUSE_MOVE_COEFFICIENT = 4;
+constexpr int MOUSE_MOVE_FAST_COEFFICIENT = 8;
+constexpr int MOUSE_MOVE_COEFFICIENT = 2;
 
 int neutralTable[KEY_CNT];
 void initNeutralTable(){
@@ -344,7 +345,11 @@ int main(int argc, char const** argv) {
                                 }
                             }
                         } else {
-                            event.value *= MOUSE_MOVE_COEFFICIENT;
+                            if (is_mouse_button) {
+                                event.value *= MOUSE_MOVE_COEFFICIENT;
+                            } else {
+                                event.value *= MOUSE_MOVE_FAST_COEFFICIENT;
+                            }
                         }
 
                         if (write(output_fd, &event, sizeof(event)) < 0) {
