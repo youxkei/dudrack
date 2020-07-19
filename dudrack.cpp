@@ -60,6 +60,7 @@ void initNeutralTable(){
 
     neutralTable[KEY_CAPSLOCK] = KEY_LEFTCTRL;
     neutralTable[KEY_LEFTMETA] = KEY_LEFTALT;
+    neutralTable[KEY_KATAKANAHIRAGANA] = KEY_LEFTALT;
 }
 
 int henkanTable[KEY_CNT];
@@ -104,6 +105,7 @@ void initHenkanTable(){
 
     henkanTable[KEY_CAPSLOCK] = KEY_LEFTCTRL;
     henkanTable[KEY_LEFTMETA] = KEY_LEFTALT;
+    henkanTable[KEY_KATAKANAHIRAGANA] = KEY_LEFTALT;
 }
 
 void exit_with_error(const char* str) {
@@ -366,7 +368,6 @@ int main(int argc, char const** argv) {
 
                         switch (event.code) {
                             case KEY_HENKAN:
-                            case KEY_KATAKANAHIRAGANA:
                             case BTN_RIGHT:
                                 is_henkan = event.value;
                                 is_wheel = event.value;

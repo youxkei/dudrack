@@ -23,8 +23,6 @@ int open_input_device(int epoll_fd, char const* path) {
         return -1;
     }
 
-    ioctl(input_fd, EVIOCGRAB, 1);
-
     return input_fd;
 }
 
