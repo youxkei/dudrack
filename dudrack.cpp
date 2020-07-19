@@ -353,18 +353,40 @@ int main(int argc, char const** argv) {
                         break;
 
                     case EV_KEY:
-                        if (is_map_switch && event.code == KEY_2) {
-                            use_dudrack = true;
-                            continue;
-                        } else if (is_map_switch && event.code == KEY_1) {
-                            use_dudrack = false;
-                            continue;
-                        } else if (is_mouse_button && event.code == KEY_D && event.value < 2) {
-                            send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
-                            continue;
-                        } else if (is_mouse_button && event.code == KEY_F && event.value < 2) {
-                            send_event(output_fd, EV_KEY, BTN_RIGHT, event.value);
-                            continue;
+                        if (is_map_switch) {
+                            switch (event.code) {
+                                case KEY_2:
+                                    use_dudrack = true;
+                                    continue;
+
+                                case KEY_1:
+                                    use_dudrack = false;
+                                    continue;
+                            }
+                        }
+
+                        if (is_mouse_button && event.value < 2) {
+                            switch (event.code) {
+                                case KEY_E:
+                                    send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
+                                    continue;
+
+                                case KEY_D:
+                                    if (event.value > 0) {
+                                        send_event(output_fd, EV_KEY, KEY_LEFTCTRL, event.value);
+                                        send_event(output_fd, EV_SYN, SYN_REPORT, 0);
+                                    }
+                                    send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
+                                    if (event.value == 0) {
+                                        send_event(output_fd, EV_SYN, SYN_REPORT, 0);
+                                        send_event(output_fd, EV_KEY, KEY_LEFTCTRL, event.value);
+                                    }
+                                    continue;
+
+                                case KEY_R:
+                                    send_event(output_fd, EV_KEY, BTN_RIGHT, event.value);
+                                    continue;
+                            }
                         }
 
                         switch (event.code) {
@@ -378,7 +400,6 @@ int main(int argc, char const** argv) {
                             case BTN_LEFT:
                                 send_event(output_fd, EV_KEY, KEY_LEFTSHIFT, event.value);
                                 is_muhenkan = event.value;
-
                                 break;
 
                             case KEY_SPACE:
