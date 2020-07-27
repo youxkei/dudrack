@@ -378,13 +378,19 @@ int main(int argc, char const** argv) {
 
                                 case KEY_D:
                                     if (event.value > 0) {
+                                        send_event(output_fd, EV_SYN, SYN_REPORT, 0);
                                         send_event(output_fd, EV_KEY, KEY_LEFTCTRL, event.value);
                                         send_event(output_fd, EV_SYN, SYN_REPORT, 0);
                                     }
+
+                                    send_event(output_fd, EV_SYN, SYN_REPORT, 0);
                                     send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
+                                    send_event(output_fd, EV_SYN, SYN_REPORT, 0);
+
                                     if (event.value == 0) {
                                         send_event(output_fd, EV_SYN, SYN_REPORT, 0);
                                         send_event(output_fd, EV_KEY, KEY_LEFTCTRL, event.value);
+                                        send_event(output_fd, EV_SYN, SYN_REPORT, 0);
                                     }
                                     continue;
 
@@ -427,8 +433,9 @@ int main(int argc, char const** argv) {
                                 is_mouse_button = event.value;
 
                                 if (event.value == 0) {
-                                    send_event(output_fd, EV_KEY, BTN_LEFT, event.value);
-                                    send_event(output_fd, EV_KEY, BTN_RIGHT, event.value);
+                                    send_event(output_fd, EV_KEY, BTN_LEFT, 0);
+                                    send_event(output_fd, EV_KEY, BTN_RIGHT, 0);
+                                    send_event(output_fd, EV_KEY, KEY_LEFTCTRL, 0);
                                 }
                                 break;
 
