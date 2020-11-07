@@ -6,7 +6,7 @@
 
 #define OUTPUT_TO_SERIAL 0
 
-#define ENABLE_GAMEPAD 1
+#define ENABLE_GAMEPAD 0
 
 #define NUM_REPORT_KEYS 6
 
