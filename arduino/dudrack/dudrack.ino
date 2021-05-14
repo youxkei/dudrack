@@ -27,14 +27,15 @@
 #define MOUSE_MOVE_COEFFICIENT 4.0
 #define MOUSE_SCROLL_DENOMINATOR 4
 
-#define MODE_NEUTRAL 0
+#define MODE_QWERTY 0
 #define MODE_DUDRACK 1
 #define MODE_GAMEPAD 2
 #define MODE_COUNT 3
 
-#define MAPPING_NEUTRAL 0
-#define MAPPING_HENKAN 1
-#define MAPPING_COUNT 2
+#define MAPPING_QWERTY 0
+#define MAPPING_DUDRACK_NEUTRAL 1
+#define MAPPING_DUDRACK_HENKAN 2
+#define MAPPING_COUNT 3
 
 #if ENABLE_GAMEPAD
 #   define STICK_NEUTRAL 0
@@ -71,73 +72,74 @@ void initKeyMappings() {
         }
     }
 
+    keyMappings[MAPPING_QWERTY][KEY_CAPS_LOCK] = KEY_LEFT_CTRL;
 
-    keyMappings[MAPPING_NEUTRAL][KEY_Q        ] = KEY_COLON;
-    keyMappings[MAPPING_NEUTRAL][KEY_W        ] = KEY_COMMA;
-    keyMappings[MAPPING_NEUTRAL][KEY_E        ] = KEY_PERIOD;
-    keyMappings[MAPPING_NEUTRAL][KEY_R        ] = KEY_P;
-    keyMappings[MAPPING_NEUTRAL][KEY_T        ] = KEY_Y;
-    keyMappings[MAPPING_NEUTRAL][KEY_Y        ] = KEY_F;
-    keyMappings[MAPPING_NEUTRAL][KEY_U        ] = KEY_G;
-    keyMappings[MAPPING_NEUTRAL][KEY_I        ] = KEY_C;
-    keyMappings[MAPPING_NEUTRAL][KEY_O        ] = KEY_R;
-    keyMappings[MAPPING_NEUTRAL][KEY_P        ] = KEY_L;
-    keyMappings[MAPPING_NEUTRAL][KEY_AT       ] = KEY_SLASH;
-    keyMappings[MAPPING_NEUTRAL][KEY_S        ] = KEY_O;
-    keyMappings[MAPPING_NEUTRAL][KEY_D        ] = KEY_E;
-    keyMappings[MAPPING_NEUTRAL][KEY_F        ] = KEY_U;
-    keyMappings[MAPPING_NEUTRAL][KEY_G        ] = KEY_I;
-    keyMappings[MAPPING_NEUTRAL][KEY_H        ] = KEY_D;
-    keyMappings[MAPPING_NEUTRAL][KEY_J        ] = KEY_H;
-    keyMappings[MAPPING_NEUTRAL][KEY_K        ] = KEY_T;
-    keyMappings[MAPPING_NEUTRAL][KEY_L        ] = KEY_N;
-    keyMappings[MAPPING_NEUTRAL][KEY_SEMICOLON] = KEY_S;
-    keyMappings[MAPPING_NEUTRAL][KEY_COLON    ] = KEY_MINUS;
-    keyMappings[MAPPING_NEUTRAL][KEY_Z        ] = KEY_SEMICOLON;
-    keyMappings[MAPPING_NEUTRAL][KEY_X        ] = KEY_Q;
-    keyMappings[MAPPING_NEUTRAL][KEY_C        ] = KEY_J;
-    keyMappings[MAPPING_NEUTRAL][KEY_V        ] = KEY_K;
-    keyMappings[MAPPING_NEUTRAL][KEY_B        ] = KEY_X;
-    keyMappings[MAPPING_NEUTRAL][KEY_N        ] = KEY_B;
-    keyMappings[MAPPING_NEUTRAL][KEY_M        ] = KEY_M;
-    keyMappings[MAPPING_NEUTRAL][KEY_COMMA    ] = KEY_W;
-    keyMappings[MAPPING_NEUTRAL][KEY_PERIOD   ] = KEY_V;
-    keyMappings[MAPPING_NEUTRAL][KEY_SLASH    ] = KEY_Z;
-    keyMappings[MAPPING_NEUTRAL][KEY_CAPS_LOCK] = KEY_LEFT_CTRL;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_Q        ] = KEY_COLON;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_W        ] = KEY_COMMA;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_E        ] = KEY_PERIOD;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_R        ] = KEY_P;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_T        ] = KEY_Y;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_Y        ] = KEY_F;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_U        ] = KEY_G;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_I        ] = KEY_C;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_O        ] = KEY_R;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_P        ] = KEY_L;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_AT       ] = KEY_SLASH;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_S        ] = KEY_O;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_D        ] = KEY_E;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_F        ] = KEY_U;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_G        ] = KEY_I;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_H        ] = KEY_D;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_J        ] = KEY_H;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_K        ] = KEY_T;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_L        ] = KEY_N;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_SEMICOLON] = KEY_S;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_COLON    ] = KEY_MINUS;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_Z        ] = KEY_SEMICOLON;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_X        ] = KEY_Q;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_C        ] = KEY_J;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_V        ] = KEY_K;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_B        ] = KEY_X;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_N        ] = KEY_B;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_M        ] = KEY_M;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_COMMA    ] = KEY_W;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_PERIOD   ] = KEY_V;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_SLASH    ] = KEY_Z;
+    keyMappings[MAPPING_DUDRACK_NEUTRAL][KEY_CAPS_LOCK] = KEY_LEFT_CTRL;
 
-    keyMappings[MAPPING_HENKAN][KEY_Q        ] = KEY_1;
-    keyMappings[MAPPING_HENKAN][KEY_W        ] = KEY_2;
-    keyMappings[MAPPING_HENKAN][KEY_E        ] = KEY_3;
-    keyMappings[MAPPING_HENKAN][KEY_R        ] = KEY_4;
-    keyMappings[MAPPING_HENKAN][KEY_T        ] = KEY_5;
-    keyMappings[MAPPING_HENKAN][KEY_Y        ] = KEY_6;
-    keyMappings[MAPPING_HENKAN][KEY_U        ] = KEY_7;
-    keyMappings[MAPPING_HENKAN][KEY_I        ] = KEY_8;
-    keyMappings[MAPPING_HENKAN][KEY_O        ] = KEY_9;
-    keyMappings[MAPPING_HENKAN][KEY_P        ] = KEY_0;
-    keyMappings[MAPPING_HENKAN][KEY_AT       ] = KEY_SLASH;
-    keyMappings[MAPPING_HENKAN][KEY_A        ] = KEY_TAB;
-    keyMappings[MAPPING_HENKAN][KEY_S        ] = KEY_ESC;
-    keyMappings[MAPPING_HENKAN][KEY_D        ] = KEY_ENTER;
-    keyMappings[MAPPING_HENKAN][KEY_F        ] = KEY_BACKSPACE;
-    keyMappings[MAPPING_HENKAN][KEY_G        ] = KEY_DELETE;
-    keyMappings[MAPPING_HENKAN][KEY_H        ] = KEY_AT;
-    keyMappings[MAPPING_HENKAN][KEY_J        ] = KEY_JP_BACKSLASH;
-    keyMappings[MAPPING_HENKAN][KEY_K        ] = KEY_LEFT_BRACKET;
-    keyMappings[MAPPING_HENKAN][KEY_L        ] = KEY_RIGHT_BRACKET;
-    keyMappings[MAPPING_HENKAN][KEY_SEMICOLON] = KEY_YEN;
-    keyMappings[MAPPING_HENKAN][KEY_COLON    ] = KEY_MINUS;
-    keyMappings[MAPPING_HENKAN][KEY_Z        ] = KEY_LEFT;
-    keyMappings[MAPPING_HENKAN][KEY_X        ] = KEY_DOWN;
-    keyMappings[MAPPING_HENKAN][KEY_C        ] = KEY_UP;
-    keyMappings[MAPPING_HENKAN][KEY_V        ] = KEY_RIGHT;
-    keyMappings[MAPPING_HENKAN][KEY_B        ] = KEY_X;
-    keyMappings[MAPPING_HENKAN][KEY_N        ] = KEY_HAN_ZEN;
-    keyMappings[MAPPING_HENKAN][KEY_M        ] = KEY_MUHENKAN;
-    keyMappings[MAPPING_HENKAN][KEY_COMMA    ] = KEY_HOME;
-    keyMappings[MAPPING_HENKAN][KEY_PERIOD   ] = KEY_END;
-    keyMappings[MAPPING_HENKAN][KEY_SLASH    ] = KEY_HAT;
-    keyMappings[MAPPING_HENKAN][KEY_CAPS_LOCK] = KEY_LEFT_CTRL;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_Q        ] = KEY_1;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_W        ] = KEY_2;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_E        ] = KEY_3;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_R        ] = KEY_4;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_T        ] = KEY_5;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_Y        ] = KEY_6;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_U        ] = KEY_7;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_I        ] = KEY_8;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_O        ] = KEY_9;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_P        ] = KEY_0;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_AT       ] = KEY_SLASH;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_A        ] = KEY_TAB;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_S        ] = KEY_ESC;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_D        ] = KEY_ENTER;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_F        ] = KEY_BACKSPACE;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_G        ] = KEY_DELETE;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_H        ] = KEY_AT;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_J        ] = KEY_JP_BACKSLASH;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_K        ] = KEY_LEFT_BRACKET;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_L        ] = KEY_RIGHT_BRACKET;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_SEMICOLON] = KEY_YEN;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_COLON    ] = KEY_MINUS;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_Z        ] = KEY_LEFT;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_X        ] = KEY_DOWN;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_C        ] = KEY_UP;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_V        ] = KEY_RIGHT;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_B        ] = KEY_X;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_N        ] = KEY_HAN_ZEN;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_M        ] = KEY_MUHENKAN;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_COMMA    ] = KEY_HOME;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_PERIOD   ] = KEY_END;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_SLASH    ] = KEY_HAT;
+    keyMappings[MAPPING_DUDRACK_HENKAN][KEY_CAPS_LOCK] = KEY_LEFT_CTRL;
 }
 
 struct {
@@ -197,7 +199,7 @@ bool handleModeSwitch(uint8_t mod, KeyboardKeycode key) {
     if (modifiers.bmRightShift) {
         switch (key) {
             case KEY_1:
-                keyboardState.currentMode = MODE_NEUTRAL;
+                keyboardState.currentMode = MODE_QWERTY;
 
                 return true;
 
@@ -216,6 +218,10 @@ bool handleModeSwitch(uint8_t mod, KeyboardKeycode key) {
     }
 
     return false;
+}
+
+void qwertyKeyDown(KeyboardKeycode key) {
+    Keyboard.press(keyMappings[MAPPING_QWERTY][key]);
 }
 
 void dudrackKeyDown(KeyboardKeycode key) {
@@ -249,11 +255,15 @@ void dudrackKeyDown(KeyboardKeycode key) {
             keyboardState.noEventBetweenSpaceEvents = false;
 
             if (keyboardState.henkanPressed || keyboardState.muhenkanPressed) {
-                Keyboard.press(keyMappings[MAPPING_HENKAN][key]);
+                Keyboard.press(keyMappings[MAPPING_DUDRACK_HENKAN][key]);
             } else {
-                Keyboard.press(keyMappings[MAPPING_NEUTRAL][key]);
+                Keyboard.press(keyMappings[MAPPING_DUDRACK_NEUTRAL][key]);
             }
     }
+}
+
+void qwertyKeyUp(KeyboardKeycode key) {
+    Keyboard.release(keyMappings[MAPPING_QWERTY][key]);
 }
 
 void dudrackKeyUp(KeyboardKeycode key) {
@@ -286,8 +296,8 @@ void dudrackKeyUp(KeyboardKeycode key) {
             return;
 
         default:
-            Keyboard.release(keyMappings[MAPPING_HENKAN][key]);
-            Keyboard.release(keyMappings[MAPPING_NEUTRAL][key]);
+            Keyboard.release(keyMappings[MAPPING_DUDRACK_HENKAN][key]);
+            Keyboard.release(keyMappings[MAPPING_DUDRACK_NEUTRAL][key]);
     }
 }
 
@@ -509,8 +519,8 @@ private:
 #endif
 
         switch (keyboardState.currentMode) {
-            case MODE_NEUTRAL:
-                Keyboard.press(key);
+            case MODE_QWERTY:
+                qwertyKeyDown(key);
                 return;
 
             case MODE_DUDRACK:
@@ -534,8 +544,8 @@ private:
 #endif
 
         switch (keyboardState.currentMode) {
-            case MODE_NEUTRAL:
-                Keyboard.release(key);
+            case MODE_QWERTY:
+                qwertyKeyUp(key);
                 return;
 
             case MODE_DUDRACK:
