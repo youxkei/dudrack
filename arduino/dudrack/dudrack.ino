@@ -149,7 +149,6 @@ struct {
     bool muhenkanPressed = false;
     bool spacePressed = false;
     bool leftShiftPressed = false;
-    bool noEventBetweenSpaceEvents = false;
 } keyboardState;
 
 struct {
@@ -170,7 +169,6 @@ struct {
 
 void releaseLeftShift() {
     if (!keyboardState.muhenkanPressed
-        && !keyboardState.spacePressed
         && !keyboardState.leftShiftPressed) {
         Keyboard.release(KEY_LEFT_SHIFT);
     }
@@ -224,11 +222,14 @@ void qwertyKeyDown(KeyboardKeycode key) {
     Keyboard.press(keyMappings[MAPPING_QWERTY][key]);
 }
 
+void qwertyKeyUp(KeyboardKeycode key) {
+    Keyboard.release(keyMappings[MAPPING_QWERTY][key]);
+}
+
 void dudrackKeyDown(KeyboardKeycode key) {
     switch (key) {
         case KEY_LEFT_SHIFT:
             keyboardState.leftShiftPressed = true;
-            keyboardState.noEventBetweenSpaceEvents = false;
             Keyboard.press(KEY_LEFT_SHIFT);
 
             return;
@@ -239,31 +240,18 @@ void dudrackKeyDown(KeyboardKeycode key) {
             return;
 
         case KEY_MUHENKAN:
-            Keyboard.press(KEY_LEFT_SHIFT);
             keyboardState.muhenkanPressed = true;
-
-            return;
-
-        case KEY_SPACE:
             Keyboard.press(KEY_LEFT_SHIFT);
-            keyboardState.spacePressed = true;
-            keyboardState.noEventBetweenSpaceEvents = true;
 
             return;
 
         default:
-            keyboardState.noEventBetweenSpaceEvents = false;
-
-            if (keyboardState.henkanPressed || keyboardState.muhenkanPressed) {
+            if (keyboardState.henkanPressed) {
                 Keyboard.press(keyMappings[MAPPING_DUDRACK_HENKAN][key]);
             } else {
                 Keyboard.press(keyMappings[MAPPING_DUDRACK_NEUTRAL][key]);
             }
     }
-}
-
-void qwertyKeyUp(KeyboardKeycode key) {
-    Keyboard.release(keyMappings[MAPPING_QWERTY][key]);
 }
 
 void dudrackKeyUp(KeyboardKeycode key) {
@@ -282,16 +270,6 @@ void dudrackKeyUp(KeyboardKeycode key) {
         case KEY_MUHENKAN:
             keyboardState.muhenkanPressed = false;
             releaseLeftShift();
-
-            return;
-
-        case KEY_SPACE:
-            keyboardState.spacePressed = false;
-            releaseLeftShift();
-            if (keyboardState.noEventBetweenSpaceEvents) {
-                Keyboard.press(KEY_SPACE);
-                Keyboard.release(KEY_SPACE);
-            }
 
             return;
 
